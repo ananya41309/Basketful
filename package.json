@@ -1,0 +1,36 @@
+{
+  "name": "basketful",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Grocery delivery payments prototype on Juspay Hyperswitch: hold the estimate, capture the true total.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"node --watch server/index.js\" \"vite\"",
+    "dev:api": "node --watch server/index.js",
+    "dev:web": "vite",
+    "build": "vite build",
+    "start": "NODE_ENV=production node server/index.js",
+    "test:capture": "node scripts/test-partial-capture.mjs",
+    "test:pricing": "node scripts/test-pricing.mjs",
+    "test:decline": "node scripts/test-decline.mjs"
+  },
+  "dependencies": {
+    "@juspay-tech/hyper-js": "latest",
+    "@juspay-tech/react-hyper-js": "latest",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "pg": "^8.13.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.0",
+    "tailwindcss": "^4.0.0",
+    "vite": "^6.0.0"
+  }
+}

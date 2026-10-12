@@ -1,0 +1,22 @@
+# Render Blueprint: one free web service serving the React app and the Express API.
+# Secrets are entered in the Render dashboard (sync: false), never committed.
+services:
+  - type: web
+    name: basketful
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: HYPERSWITCH_API_KEY
+        sync: false
+      - key: HYPERSWITCH_PUBLISHABLE_KEY
+        sync: false
+      - key: HYPERSWITCH_WEBHOOK_SECRET
+        sync: false
+      - key: DATABASE_URL # Neon connection string (includes sslmode=require)
+        sync: false
+      - key: HYPERSWITCH_BASE_URL
+        value: https://sandbox.hyperswitch.io
+# APP_BASE_URL is optional on Render: the server falls back to RENDER_EXTERNAL_URL for payment return URLs.
