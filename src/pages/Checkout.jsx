@@ -12,6 +12,7 @@ export default function Checkout({ config, lines, setLines, tip, setTip, order, 
   const [pricing, setPricing] = useState(null);
   const [error, setError] = useState(null);
   const [placing, setPlacing] = useState(false);
+  const [simulateDecline, setSimulateDecline] = useState(false);
 
   const locked = Boolean(order); // once a payment exists, its amount is fixed
   const byId = useMemo(() => Object.fromEntries(config.catalog.map((i) => [i.id, i])), [config.catalog]);
@@ -46,7 +47,7 @@ export default function Checkout({ config, lines, setLines, tip, setTip, order, 
     setPlacing(true);
     setError(null);
     try {
-      await onPlaceOrder(lines, tip);
+      await onPlaceOrder(lines, tip, { simulateDecline });
     } catch (e) {
       setError(e.message);
     } finally {
@@ -147,6 +148,7 @@ export default function Checkout({ config, lines, setLines, tip, setTip, order, 
               Continue to payment
             </Button>
           )}
+          {!locked && <DemoDeclineToggle checked={simulateDecline} onChange={setSimulateDecline} />}
           {locked && clientSecret && (
             <PayStep
               key={clientSecret}
@@ -154,11 +156,33 @@ export default function Checkout({ config, lines, setLines, tip, setTip, order, 
               clientSecret={clientSecret}
               orderId={order.id}
               holdAmount={order.pricing.hold}
+              simulateDecline={order.simulatedDeclinePaymentId === order.payment?.id}
               onSettled={onPaymentSettled}
             />
           )}
         </Card>
       </div>
     </div>
+  );
+}
+
+// Presenter tooling, not product UI: dashed, grey and tagged "Demo", like the other demo hints.
+// Applies to this one payment attempt; "Try another payment method" is always a normal attempt.
+function DemoDeclineToggle({ checked, onChange }) {
+  return (
+    <label className="mt-3 flex cursor-pointer items-start gap-2.5 rounded-xl border border-dashed border-stone-300 bg-stone-50 px-3 py-2.5 text-xs text-stone-600">
+      <input
+        type="checkbox"
+        className="mt-0.5 accent-stone-700"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      <span>
+        <span className="mr-1.5 rounded bg-stone-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-stone-600">
+          Demo
+        </span>
+        Simulate a declined card for this attempt. The PayPal sandbox refuses it, so you can see the retry flow.
+      </span>
+    </label>
   );
 }

@@ -42,7 +42,7 @@ async function call(method, path, body) {
 
 // Create a payment that only authorizes (places a hold). The browser confirms it
 // through Unified Checkout using the returned client_secret.
-export function createHoldPayment({ amount, orderId, description, returnUrl }) {
+export function createHoldPayment({ amount, orderId, description, returnUrl, simulateDecline = false }) {
   const body = {
     amount,
     currency: 'USD',
@@ -52,11 +52,11 @@ export function createHoldPayment({ amount, orderId, description, returnUrl }) {
     authentication_type: 'no_three_ds',
     description,
     return_url: returnUrl,
-    metadata: { order_id: orderId },
+    metadata: simulateDecline ? { order_id: orderId, demo: 'simulated_decline' } : { order_id: orderId },
     // Prefilled demo customer. Some processors (e.g. Cybersource) require name, email and billing
     // address; sending them here means the checkout form only asks for the card.
     email: DEMO_CUSTOMER.email,
-    billing: DEMO_CUSTOMER.billing,
+    billing: simulateDecline ? DECLINE_BILLING : DEMO_CUSTOMER.billing,
   };
   if (process.env.HYPERSWITCH_PROFILE_ID) body.profile_id = process.env.HYPERSWITCH_PROFILE_ID;
   return call('POST', '/payments', body);
@@ -76,6 +76,14 @@ export const DEMO_CUSTOMER = {
     },
     email: 'demo.customer@example.com',
   },
+};
+
+// Demo only (checkout's "Simulate a declined card"). PayPal's sandbox refuses a card when the cardholder
+// name is CCREJECT-REFUSED, and Hyperswitch sends the billing name as the card name.
+export const DECLINE_TRIGGER_NAME = 'CCREJECT-REFUSED';
+const DECLINE_BILLING = {
+  ...DEMO_CUSTOMER.billing,
+  address: { ...DEMO_CUSTOMER.billing.address, first_name: DECLINE_TRIGGER_NAME, last_name: undefined },
 };
 
 // force_sync asks Hyperswitch to fetch the latest status from the processor.

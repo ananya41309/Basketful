@@ -38,6 +38,7 @@ charged $58.25, released $12.43. Without the opt-in the hold is $68.50.
 | D16 | Customer sees picking live, read-only (draft saved on every shopper change) |
 | D17 | Ops: order list, detail with timeline, refund a line item once, cancel a hold |
 | D18 | One shared current order across roles; Shopper opens on held orders, Ops on all orders |
+| D19 | Declines are demoable: a "Demo" switch at checkout makes that one payment attempt fail (PayPal's `CCREJECT-REFUSED` name); retry is always a normal new payment on the same order. Customers see plain copy; processor codes stay in the inspector and Ops |
 
 ## Guardrails against feature creep
 
@@ -49,6 +50,7 @@ charged $58.25, released $12.43. Without the opt-in the hold is $68.50.
 ## Slices
 
 - **Slice 0 (done):** demo basket, hold breakdown, Unified Checkout, capture, cancel, decline retry, receipt, inspector.
+  Demo decline switch (D19) makes the decline path reachable in the live sandbox.
 - **Slice 1 (built):** role switcher (D18 shared current order); store (D15); shopper console with catalog
   substitutes, disabled over-approval options and headroom meter (D14); live customer updates (D16);
   ops list/detail with line-item refunds and cancel (D17); Postgres write-through store; Render blueprint.

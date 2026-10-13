@@ -51,6 +51,7 @@ export function applyPayment(order, payment, { source, eventType, verification }
     amountCapturable: summary.amountCapturable,
     amountReceived: summary.amountReceived,
     verification,
+    note: summary.errorCode || summary.errorMessage ? [summary.errorCode, summary.errorMessage].filter(Boolean).join(' · ') : undefined,
     ignored: isStale ? 'older than current state' : undefined,
   });
 
@@ -67,20 +68,31 @@ export function applyPayment(order, payment, { source, eventType, verification }
   return order;
 }
 
-async function startPayment(order) {
+async function startPayment(order, { simulateDecline = false } = {}) {
   const payment = await hs.createHoldPayment({
     amount: order.pricing.hold,
     orderId: order.id,
     description: `Basketful order ${order.id}`,
     returnUrl: returnUrlFor(order.id),
+    simulateDecline,
   });
   order.payment = null; // the new payment becomes current
   order.paymentIds.push(payment.payment_id);
+  if (simulateDecline) {
+    // Remembered per payment, so a retry (a new payment) is a normal attempt.
+    order.simulatedDeclinePaymentId = payment.payment_id;
+    logEvent(order, {
+      source: 'app',
+      type: 'demo.decline_simulated',
+      paymentId: payment.payment_id,
+      note: `Demo: the PayPal sandbox will refuse this attempt (cardholder name ${hs.DECLINE_TRIGGER_NAME})`,
+    });
+  }
   applyPayment(order, payment, { source: 'api', eventType: 'payment.created (manual capture)' });
   return payment.client_secret;
 }
 
-export async function createOrder({ lines, tipCents }) {
+export async function createOrder({ lines, tipCents, simulateDecline }) {
   const pricing = quote(lines, tipCents);
   const order = {
     id: newId(),
@@ -94,7 +106,7 @@ export async function createOrder({ lines, tipCents }) {
     events: [],
   };
   logEvent(order, { source: 'app', type: 'order.created', note: `Estimate ${pricing.estimate}, hold ${pricing.hold}` });
-  const clientSecret = await startPayment(order);
+  const clientSecret = await startPayment(order, { simulateDecline: simulateDecline === true });
   store.saveOrder(order);
   return { order, clientSecret };
 }

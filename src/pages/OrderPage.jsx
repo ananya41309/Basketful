@@ -43,7 +43,7 @@ export default function OrderPage({ config, order, clientSecret, onOrder, onRetr
         )}
 
         {(order.status === 'payment_failed' || order.status === 'awaiting_payment') && (
-          <Card title="Payment" subtitle="Your basket is saved. Try again or use another payment method.">
+          <Card title="Payment" subtitle={order.status === 'payment_failed' ? `Use another card. The hold stays at ${usd(pricing.hold)}.` : 'Complete payment to place the hold.'}>
             {clientSecret ? (
               <PayStep
                 key={clientSecret}
@@ -67,7 +67,7 @@ export default function OrderPage({ config, order, clientSecret, onOrder, onRetr
       <div className="space-y-6">
         <Card title="Order" subtitle={order.id} action={<StatusBadge status={order.status} />}>
           <Row label="Estimate at checkout" value={usd(pricing.estimate)} />
-          <Row label="Hold placed" value={usd(pricing.hold)} />
+          <Row label={['payment_failed', 'awaiting_payment', 'confirming'].includes(order.status) ? 'Hold to place' : 'Hold placed'} value={usd(pricing.hold)} />
           {final && <Row label="Final total" value={usd(final.total)} strong />}
           {['held', 'awaiting_payment'].includes(order.status) && (
             <Button
@@ -104,15 +104,23 @@ function StatusHero({ order }) {
       `We released the remaining ${usd(pricing.hold - (payment?.amountReceived ?? final?.total ?? 0))} of your hold.`,
     ],
     released: ['Order cancelled', `The ${usd(pricing.hold)} hold was released. You were not charged.`],
-    payment_failed: ["Your payment didn't go through", payment?.errorMessage || 'No hold was placed. Your basket is saved.'],
+    // Customer copy only: the processor's code (e.g. DO_NOT_HONOR) stays in the payment inspector and Ops.
+    payment_failed: payment?.errorCode || payment?.errorMessage
+      ? ['Your bank declined this card', 'No hold was placed and your basket is saved. Try another card below.']
+      : ["Your payment didn't go through", 'No hold was placed and your basket is saved.'],
     refunded: ['Refunded', 'Your refund is on its way to your card.'],
   }[order.status] ?? [order.status, ''];
+  const failed = order.status === 'payment_failed';
 
   return (
-    <section className="rounded-2xl bg-gradient-to-br from-brand-700 to-brand-800 p-6 text-white shadow-sm">
-      <p className="text-sm text-emerald-100">Order {order.id}</p>
+    <section
+      className={`rounded-2xl bg-gradient-to-br p-6 text-white shadow-sm ${
+        failed ? 'from-rose-700 to-rose-800' : 'from-brand-700 to-brand-800'
+      }`}
+    >
+      <p className={`text-sm ${failed ? 'text-rose-100' : 'text-emerald-100'}`}>Order {order.id}</p>
       <h1 className="mt-1 text-2xl font-semibold">{copy[0]}</h1>
-      <p className="mt-1 text-emerald-50">{copy[1]}</p>
+      <p className={`mt-1 ${failed ? 'text-rose-50' : 'text-emerald-50'}`}>{copy[1]}</p>
     </section>
   );
 }

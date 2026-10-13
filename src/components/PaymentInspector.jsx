@@ -43,7 +43,7 @@ export default function PaymentInspector({ order, webhooksVerified, onSync, onCl
               <span className="shrink-0 rounded-md bg-stone-800 px-2 py-0.5 font-mono text-xs">{payment.status}</span>
             </div>
             <div className="rounded-xl bg-stone-800/60 px-3 py-2">
-              <IRow label="Authorized (hold)" value={usd(payment.amount)} />
+              <IRow label={['failed', 'requires_payment_method', 'requires_confirmation', 'requires_customer_action'].includes(payment.status) ? 'Requested (not authorized)' : 'Authorized (hold)'} value={usd(payment.amount)} />
               <IRow label="Still capturable" value={usd(payment.amountCapturable)} />
               <IRow label="Captured" value={usd(payment.amountReceived)} />
               {order.refunds.length > 0 && (
@@ -60,7 +60,11 @@ export default function PaymentInspector({ order, webhooksVerified, onSync, onCl
               <dt className="text-stone-400">webhooks</dt>
               <dd>{webhookCount} received · {webhooksVerified ? 'signature checked' : 'signing key not set'}</dd>
             </dl>
-            {payment.errorMessage && <p className="text-xs text-rose-300">{payment.errorMessage}</p>}
+            {(payment.errorCode || payment.errorMessage) && (
+              <p className="font-mono text-xs text-rose-300">
+                {[payment.errorCode, payment.errorMessage].filter(Boolean).join(' · ')}
+              </p>
+            )}
             <button
               onClick={sync}
               disabled={syncing}

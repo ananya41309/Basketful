@@ -18,7 +18,8 @@ async function request(method, path, body) {
 export const api = {
   config: () => request('GET', '/config'),
   quote: (lines, tipCents) => request('POST', '/quote', { lines, tipCents }),
-  createOrder: (lines, tipCents) => request('POST', '/orders', { lines, tipCents }),
+  createOrder: (lines, tipCents, { simulateDecline = false } = {}) =>
+    request('POST', '/orders', { lines, tipCents, simulateDecline }),
   getOrder: (id) => request('GET', `/orders/${id}`),
   sync: (id) => request('POST', `/orders/${id}/sync`),
   retryPayment: (id) => request('POST', `/orders/${id}/payment`),

@@ -35,9 +35,10 @@ cards enabled, other processors disabled.
 prefilled server-side, so the checkout form only asks for the card.
 
 Declines: PayPal's sandbox refuses a card when the cardholder name is `CCREJECT-REFUSED` (card `4012 8888 8888 1881`,
-from Hyperswitch's own PayPal tests). Hyperswitch sends the billing name as the card name, and the app prefills
-"Demo Customer", so `npm run test:decline` exercises the decline server-to-server. In the app, "Try another payment method"
-creates a new payment for the same order, so Hyperswitch's `manual_retry` setting is not needed.
+from Hyperswitch's own PayPal tests). Hyperswitch sends the billing name as the card name, and the app normally prefills
+"Demo Customer", so a decline needs the checkout's **Demo · Simulate a declined card** switch, which sends the refusal name
+for that one payment attempt. "Try another payment method" then creates a new, normal payment for the same order, so
+Hyperswitch's `manual_retry` setting is not needed. `npm run test:decline` checks the same path server-to-server.
 
 ### How we chose the processor
 
@@ -70,6 +71,10 @@ The payment inspector on the right shows the live Hyperswitch state for that ord
 6. **Shopper · Finish picking.** Charges **$58.25** and releases $12.43. The inspector shows `partially_captured`.
 7. **Ops.** Open the order, refund the oat milk ($7.08); the timeline shows the refund. A second refund of the same item is refused.
 8. **Cancel:** start a new order, pay, and cancel it while held (Customer or Ops): `cancelled`, hold released.
+9. **Decline:** start a new order and, at checkout, tick **Demo · Simulate a declined card**. Pay with 4012 8888 8888 1881:
+   the page turns red with "Your bank declined this card", no hold is placed, and the basket is kept (the processor's
+   `DO_NOT_HONOR` shows only in the inspector and Ops). **Try another payment method** opens a normal attempt; pay with
+   4012 0000 3333 0026 and the hold is placed. Ops shows both attempts on one order.
 
 ## Webhooks
 

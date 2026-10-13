@@ -94,8 +94,8 @@ export default function App() {
     setView('order');
   }
 
-  async function placeOrder(cartLines, tipCents) {
-    const res = await api.createOrder(cartLines, tipCents);
+  async function placeOrder(cartLines, tipCents, opts) {
+    const res = await api.createOrder(cartLines, tipCents, opts);
     updateOrder(res.order);
     setClientSecret(res.clientSecret);
   }

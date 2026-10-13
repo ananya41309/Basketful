@@ -1,19 +1,17 @@
-// Decline path in the live sandbox: a refused card fails the payment, and a fresh payment for the same
-// order then succeeds (the app's "Try another card" creates a new payment rather than re-confirming the
-// failed one, so Hyperswitch's manual_retry setting is not needed).
-//   1. Hold with PayPal's refusal trigger   -> failed (DO_NOT_HONOR)
-//   2. New hold with the good test card     -> requires_capture
+// Decline path in the live sandbox, through the same server code the app uses
+// (createHoldPayment with the checkout's "Simulate a declined card" switch):
+//   1. Hold with simulateDecline            -> failed (PayPal DO_NOT_HONOR)
+//   2. New hold for the same order, normal  -> requires_capture   ("Try another payment method")
 //   3. Void it so nothing is left on hold   -> cancelled
 //
 // PayPal's sandbox declines when the cardholder name is CCREJECT-REFUSED (its negative-testing trigger);
 // Hyperswitch sends the billing name as the card name. Card and name come from Hyperswitch's own PayPal tests.
 // Run: npm run test:decline
 import 'dotenv/config';
-import { cancelPayment, HyperswitchError, DEMO_CUSTOMER } from '../server/hyperswitch.js';
+import { createHoldPayment, cancelPayment, HyperswitchError } from '../server/hyperswitch.js';
 
 const BASE_URL = (process.env.HYPERSWITCH_BASE_URL || 'https://sandbox.hyperswitch.io').replace(/\/$/, '');
 const HOLD = 7068;
-const DECLINE_NAME = 'CCREJECT-REFUSED';
 const results = [];
 
 function check(name, pass, detail) {
@@ -21,49 +19,30 @@ function check(name, pass, detail) {
   console.log(`${pass ? 'PASS' : 'FAIL'}  ${name}${detail ? `  (${detail})` : ''}`);
 }
 
-async function hs(method, path, body) {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method,
+async function confirmWithCard(paymentId, cardNumber) {
+  const res = await fetch(`${BASE_URL}/payments/${encodeURIComponent(paymentId)}/confirm`, {
+    method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'api-key': process.env.HYPERSWITCH_API_KEY },
-    body: body ? JSON.stringify(body) : undefined,
+    body: JSON.stringify({
+      payment_method: 'card',
+      payment_method_type: 'credit',
+      payment_method_data: { card: { card_number: cardNumber, card_exp_month: '12', card_exp_year: '2030', card_cvc: '123' } },
+    }),
   });
   const json = await res.json();
   if (!res.ok) throw new HyperswitchError(res.status, json);
   return json;
 }
 
-async function hold({ cardNumber, firstName, lastName, label }) {
-  const billing = {
-    ...DEMO_CUSTOMER.billing,
-    address: { ...DEMO_CUSTOMER.billing.address, first_name: firstName, last_name: lastName },
-  };
-  const create = {
+async function hold({ simulateDecline, cardNumber, label }) {
+  const created = await createHoldPayment({
     amount: HOLD,
-    currency: 'USD',
-    capture_method: 'manual',
-    confirm: false,
-    authentication_type: 'no_three_ds',
-    email: DEMO_CUSTOMER.email,
-    billing,
+    orderId: 'bf_decline_test',
     description: `Basketful sandbox test: ${label}`,
-    return_url: 'https://example.com/return',
-    metadata: { test: label },
-  };
-  if (process.env.HYPERSWITCH_PROFILE_ID) create.profile_id = process.env.HYPERSWITCH_PROFILE_ID;
-  const created = await hs('POST', '/payments', create);
-  return hs('POST', `/payments/${encodeURIComponent(created.payment_id)}/confirm`, {
-    payment_method: 'card',
-    payment_method_type: 'credit',
-    payment_method_data: {
-      card: {
-        card_number: cardNumber,
-        card_exp_month: '12',
-        card_exp_year: '2030',
-        card_holder_name: [firstName, lastName].filter(Boolean).join(' '),
-        card_cvc: '123',
-      },
-    },
+    returnUrl: 'https://example.com/return',
+    simulateDecline,
   });
+  return confirmWithCard(created.payment_id, cardNumber);
 }
 
 async function main() {
@@ -73,14 +52,14 @@ async function main() {
   }
   console.log(`Hyperswitch: ${BASE_URL}\n`);
 
-  const declined = await hold({ cardNumber: '4012888888881881', firstName: DECLINE_NAME, lastName: undefined, label: 'decline' });
+  const declined = await hold({ simulateDecline: true, cardNumber: '4012888888881881', label: 'simulated decline' });
   check(
-    'Refused card fails the payment',
+    'Simulated decline fails the payment',
     declined.status === 'failed',
-    `status=${declined.status}, error=${declined.error_code ?? '—'} ${declined.error_message ?? ''}`.trim(),
+    `status=${declined.status}, error=${[declined.error_code, declined.error_message].filter(Boolean).join(' ') || '—'}`,
   );
 
-  const retried = await hold({ cardNumber: '4012000033330026', firstName: 'Demo', lastName: 'Customer', label: 'retry after decline' });
+  const retried = await hold({ simulateDecline: false, cardNumber: '4012000033330026', label: 'retry after decline' });
   check('A new payment with the good card is held', retried.status === 'requires_capture', `status=${retried.status}`);
 
   if (retried.status === 'requires_capture') {

@@ -15,7 +15,7 @@ const returnUrlFor = (orderId) => `${window.location.origin}/?order=${orderId}`;
 
 // Unified Checkout renders cards and wallets and sends card data straight to Hyperswitch.
 // Our server only ever sees the payment id, amounts and status.
-export default function PayStep({ publishableKey, clientSecret, orderId, holdAmount, onSettled }) {
+export default function PayStep({ publishableKey, clientSecret, orderId, holdAmount, simulateDecline = false, onSettled }) {
   const hyperPromise = useMemo(() => getHyper(publishableKey), [publishableKey]);
   const options = useMemo(
     () => ({
@@ -30,12 +30,12 @@ export default function PayStep({ publishableKey, clientSecret, orderId, holdAmo
 
   return (
     <HyperElements hyper={hyperPromise} options={options}>
-      <PayForm orderId={orderId} holdAmount={holdAmount} onSettled={onSettled} />
+      <PayForm orderId={orderId} holdAmount={holdAmount} simulateDecline={simulateDecline} onSettled={onSettled} />
     </HyperElements>
   );
 }
 
-function PayForm({ orderId, holdAmount, onSettled }) {
+function PayForm({ orderId, holdAmount, simulateDecline, onSettled }) {
   const hyper = useHyper();
   const elements = useWidgets();
   const [ready, setReady] = useState(false);
@@ -81,9 +81,16 @@ function PayForm({ orderId, holdAmount, onSettled }) {
       <Button type="submit" className="w-full" busy={busy} disabled={!ready}>
         Place hold of {usd(holdAmount)}
       </Button>
-      <p className="text-center text-xs text-stone-500">
-        PayPal sandbox test card 4012 0000 3333 0026 · any future date · any CVC.
-      </p>
+      {simulateDecline ? (
+        <p className="rounded-lg border border-dashed border-stone-300 bg-stone-50 px-3 py-2 text-center text-xs text-stone-600">
+          <span className="font-semibold">Demo decline is on:</span> the sandbox will refuse this attempt. Use 4012 8888 8888 1881 ·
+          any future date · any CVC.
+        </p>
+      ) : (
+        <p className="text-center text-xs text-stone-500">
+          PayPal sandbox test card 4012 0000 3333 0026 · any future date · any CVC.
+        </p>
+      )}
     </form>
   );
 }
