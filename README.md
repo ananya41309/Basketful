@@ -3,6 +3,8 @@
 A grocery delivery checkout on [Juspay Hyperswitch](https://docs.hyperswitch.io/) that places a hold for the
 estimate and charges only what was delivered.
 
+**Live demo:** https://basketful-w64j.onrender.com (free hosting: the first load after a quiet spell takes about a minute)
+
 > Estimate $62.00 → hold $70.68 (incl. an opt-in to pay up to $3 more for oat milk) → shopper swaps and weighs items → charged $58.25 → $12.43 released.
 
 ## Run it locally
